@@ -42,12 +42,15 @@ async def registration_begin(
     navigator.credentials.create() API.
     """
     service = AuthService(db)
-    options = await service.begin_registration(
+    result = await service.begin_registration(
         username=request.username,
         display_name=request.display_name,
         email=request.email,
     )
-    return RegistrationBeginResponse(options=options)
+    return RegistrationBeginResponse(
+        options=result["options"],
+        challenge_id=result["challenge_id"],
+    )
 
 
 @router.post("/register/complete", response_model=AuthResponse)
@@ -64,6 +67,9 @@ async def registration_complete(
     user = await service.complete_registration(
         credential=request.credential,
         challenge_id=request.challenge_id,
+        username=request.username,
+        display_name=request.display_name,
+        email=request.email,
     )
     tokens = create_token_pair(str(user.id))
     return AuthResponse(
@@ -85,8 +91,11 @@ async def login_begin(
     navigator.credentials.get() API.
     """
     service = AuthService(db)
-    options = await service.begin_authentication(username=request.username)
-    return AuthenticationBeginResponse(options=options)
+    result = await service.begin_authentication(username=request.username)
+    return AuthenticationBeginResponse(
+        options=result["options"],
+        challenge_id=result["challenge_id"],
+    )
 
 
 @router.post("/login/complete", response_model=AuthResponse)

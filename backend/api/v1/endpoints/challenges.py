@@ -4,7 +4,7 @@ Daily Challenges Endpoints.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.database import get_db
@@ -27,7 +27,10 @@ async def get_today_challenge(
 ):
     """Get today's daily challenge (theory + simulation + prediction)."""
     service = ChallengeService(db)
-    return await service.get_today(user_id)
+    try:
+        return await service.get_today(user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/attempt", response_model=ChallengeAttemptResponse)

@@ -7,7 +7,7 @@ candle-by-candle over WebSocket while the user trades with fake capital.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.database import get_db
@@ -36,7 +36,8 @@ async def list_available_tickers(
     return await service.get_available_tickers()
 
 
-@router.post("/create", response_model=SimulationCreateResponse)
+@router.post("/sessions", response_model=SimulationCreateResponse)
+@router.post("/create", response_model=SimulationCreateResponse, include_in_schema=False)
 async def create_simulation(
     request: SimulationCreateRequest,
     user_id: str = Depends(get_current_user_id),
@@ -78,7 +79,8 @@ async def control_simulation(
     return await service.control(user_id, session_id, request)
 
 
-@router.post("/{session_id}/trade", response_model=SimulationTradeResponse)
+@router.post("/sessions/{session_id}/trade", response_model=SimulationTradeResponse)
+@router.post("/{session_id}/trade", response_model=SimulationTradeResponse, include_in_schema=False)
 async def simulation_trade(
     session_id: str,
     request: SimulationTradeRequest,
@@ -91,7 +93,10 @@ async def simulation_trade(
     whether to trade and results are compared.
     """
     service = SimulationService(db)
-    return await service.execute_trade(user_id, session_id, request)
+    try:
+        return await service.execute_trade(user_id, session_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{session_id}/result", response_model=SimulationResult)

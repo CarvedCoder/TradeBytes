@@ -43,7 +43,8 @@ async def query_advisor(
     return await service.query(user_id, request)
 
 
-@router.get("/history", response_model=ConversationHistoryResponse)
+@router.get("/conversations", response_model=ConversationHistoryResponse)
+@router.get("/history", response_model=ConversationHistoryResponse, include_in_schema=False)
 async def get_conversation_history(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

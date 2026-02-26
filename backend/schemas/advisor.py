@@ -6,15 +6,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AdvisorQueryRequest(BaseModel):
-    message: str
+    message: str = Field(..., alias="query")
     conversation_id: str | None = None
     include_portfolio: bool = True
     include_news: bool = True
     include_predictions: bool = True
+
+    model_config = {"populate_by_name": True}
 
 
 class AdvisorQueryResponse(BaseModel):

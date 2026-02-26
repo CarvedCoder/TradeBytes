@@ -24,6 +24,7 @@ from backend.services.portfolio_service import PortfolioService
 router = APIRouter()
 
 
+@router.get("/allocation", response_model=PortfolioOverview)
 @router.get("/overview", response_model=PortfolioOverview)
 async def get_portfolio_overview(
     user_id: str = Depends(get_current_user_id),
@@ -34,7 +35,8 @@ async def get_portfolio_overview(
     return await service.get_overview(user_id)
 
 
-@router.get("/risk", response_model=RiskMetrics)
+@router.get("/risk-metrics", response_model=RiskMetrics)
+@router.get("/risk", response_model=RiskMetrics, include_in_schema=False)
 async def get_risk_metrics(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -64,7 +66,8 @@ async def get_drawdown_analysis(
     return await service.compute_drawdown(user_id)
 
 
-@router.get("/suggestions", response_model=AIPortfolioSuggestions)
+@router.get("/ai-suggestions", response_model=AIPortfolioSuggestions)
+@router.get("/suggestions", response_model=AIPortfolioSuggestions, include_in_schema=False)
 async def get_ai_suggestions(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

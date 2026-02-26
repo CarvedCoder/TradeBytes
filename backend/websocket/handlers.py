@@ -61,13 +61,96 @@ async def simulation_stream(
 
     await ws_manager.connect(websocket, user_id, channel)
 
+    # Simulation state
+    sim_state = {
+        "paused": False,
+        "speed": 1.0,
+        "candle_index": 0,
+        "total_candles": 252,
+    }
+
+    async def stream_candles():
+        """Background task: generate and stream candle data."""
+        import random
+        import math
+
+        base_price = 150.0
+        price = base_price
+        trend = 0.0002  # slight uptrend
+
+        while sim_state["candle_index"] < sim_state["total_candles"]:
+            if sim_state["paused"]:
+                await asyncio.sleep(0.2)
+                continue
+
+            # Generate realistic OHLCV candle
+            volatility = 0.015
+            drift = trend + random.gauss(0, volatility)
+            open_price = price
+            close_price = open_price * (1 + drift)
+            high_price = max(open_price, close_price) * (1 + abs(random.gauss(0, 0.005)))
+            low_price = min(open_price, close_price) * (1 - abs(random.gauss(0, 0.005)))
+            volume = int(random.gauss(50_000_000, 15_000_000))
+
+            # Advance date (skip weekends)
+            from datetime import date, timedelta
+            base_date = date(2023, 1, 3)  # first trading day
+            trading_day = base_date + timedelta(days=int(sim_state["candle_index"] * 365 / 252))
+
+            candle = {
+                "time": trading_day.isoformat(),
+                "open": round(open_price, 2),
+                "high": round(high_price, 2),
+                "low": round(low_price, 2),
+                "close": round(close_price, 2),
+                "volume": max(volume, 1_000_000),
+            }
+
+            price = close_price
+            sim_state["candle_index"] += 1
+
+            try:
+                await ws_manager.send_to_user(user_id, {
+                    "type": "candle",
+                    "data": candle,
+                })
+            except Exception:
+                return
+
+            # AI prediction every 10 candles
+            if sim_state["candle_index"] % 10 == 0:
+                direction = "up" if drift > 0 else "down"
+                confidence = min(0.95, 0.5 + abs(drift) * 20)
+                try:
+                    await ws_manager.send_to_user(user_id, {
+                        "type": "ai_prediction",
+                        "data": {
+                            "direction": direction,
+                            "confidence": round(confidence, 2),
+                        },
+                    })
+                except Exception:
+                    return
+
+            # Delay based on speed (faster speed = shorter delay)
+            delay = 1.0 / sim_state["speed"]
+            await asyncio.sleep(delay)
+
+        # Session complete
+        try:
+            await ws_manager.send_to_user(user_id, {"type": "session_completed"})
+        except Exception:
+            pass
+
+    # Start candle streaming in background
+    stream_task = asyncio.create_task(stream_candles())
+
     try:
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type", "")
 
             if msg_type == "trade":
-                # Process trade within simulation
                 await ws_manager.send_to_user(user_id, {
                     "type": "trade_ack",
                     "status": "received",
@@ -77,21 +160,25 @@ async def simulation_stream(
 
             elif msg_type == "speed_change":
                 speed = data.get("speed", 1.0)
+                sim_state["speed"] = max(0.25, min(speed, 10.0))
                 await ws_manager.send_to_user(user_id, {
                     "type": "speed_updated",
-                    "speed": speed,
+                    "speed": sim_state["speed"],
                 })
 
             elif msg_type == "pause":
+                sim_state["paused"] = True
                 await ws_manager.send_to_user(user_id, {"type": "session_paused"})
 
             elif msg_type == "resume":
+                sim_state["paused"] = False
                 await ws_manager.send_to_user(user_id, {"type": "session_resumed"})
 
             elif msg_type == "ping":
                 await ws_manager.send_to_user(user_id, {"type": "pong"})
 
     except WebSocketDisconnect:
+        stream_task.cancel()
         await ws_manager.disconnect(websocket, user_id, channel)
 
 
