@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from dataclasses import dataclass, field
 from typing import Optional
-from core.config import get_settings
+from backend.core.config import get_settings
 
 settings = get_settings()
 

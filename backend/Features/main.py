@@ -5,19 +5,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from regime.router import router as regime_router
-from news.router import router as news_router
-from risk.router import router as risk_router
-from behavioral.router import router as behavioral_router
-from gamification.router import router as gamification_router
+from backend.Features.regime.router import router as regime_router
+from backend.Features.news.router import router as news_router
+from backend.Features.risk.router import router as risk_router
+from backend.Features.behavioral.router import router as behavioral_router
+from backend.Features.gamification.router import router as gamification_router
 
 logger = structlog.get_logger()
 
 
 async def _run_leaderboard_updater():
     """Hourly leaderboard recalculation background task."""
-    from core.database import AsyncSessionLocal
-    from gamification.leaderboard import update_leaderboard
+    from backend.Features.core.database import AsyncSessionLocal
+    from backend.Features.gamification.leaderboard import update_leaderboard
     while True:
         try:
             async with AsyncSessionLocal() as db:
@@ -29,7 +29,7 @@ async def _run_leaderboard_updater():
 
 async def _run_news_processor():
     """Background news stream processor."""
-    from news.ingestion.processor import NewsProcessor
+    from backend.Features.news.ingestion.processor import NewsProcessor
     processor = NewsProcessor()
     await processor.run_forever()
 
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
     # Warm NLP pipeline
     try:
-        from news.nlp.pipeline import get_nlp_pipeline
+        from backend.Features.news.nlp.pipeline import get_nlp_pipeline
         get_nlp_pipeline()
         logger.info("nlp_pipeline_warmed")
     except Exception as e:

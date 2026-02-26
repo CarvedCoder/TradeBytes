@@ -5,8 +5,15 @@ from dataclasses import dataclass, field
 from typing import Optional
 from hmmlearn.hmm import GaussianHMM
 from sklearn.preprocessing import StandardScaler
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    _TORCH_AVAILABLE = True
+except Exception:
+    torch = None
+    class _DummyNN: pass
+    nn = _DummyNN()
+    _TORCH_AVAILABLE = False
 
 
 REGIME_LABELS = ["trending", "mean_reverting", "high_volatility", "low_volatility", "news_driven"]
@@ -20,28 +27,31 @@ class RegimeOutput:
     features_snapshot: dict = field(default_factory=dict)
 
 
-class RegimeCNN(nn.Module):
-    """1D-CNN fallback for hard-to-separate regimes."""
+if _TORCH_AVAILABLE:
+    class RegimeCNN(nn.Module):
+        """1D-CNN fallback for hard-to-separate regimes."""
 
-    def __init__(self, n_features: int = 8, n_classes: int = 5, seq_len: int = 30):
-        super().__init__()
-        self.conv1 = nn.Conv1d(n_features, 64, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv1d(64, 128, kernel_size=3, padding=1)
-        self.pool = nn.AdaptiveAvgPool1d(8)
-        self.fc1 = nn.Linear(128 * 8, 128)
-        self.fc2 = nn.Linear(128, n_classes)
-        self.dropout = nn.Dropout(0.3)
-        self.relu = nn.ReLU()
+        def __init__(self, n_features: int = 8, n_classes: int = 5, seq_len: int = 30):
+            super().__init__()
+            self.conv1 = nn.Conv1d(n_features, 64, kernel_size=3, padding=1)
+            self.conv2 = nn.Conv1d(64, 128, kernel_size=3, padding=1)
+            self.pool = nn.AdaptiveAvgPool1d(8)
+            self.fc1 = nn.Linear(128 * 8, 128)
+            self.fc2 = nn.Linear(128, n_classes)
+            self.dropout = nn.Dropout(0.3)
+            self.relu = nn.ReLU()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (batch, seq_len, n_features) → (batch, n_features, seq_len)
-        x = x.permute(0, 2, 1)
-        x = self.relu(self.conv1(x))
-        x = self.relu(self.conv2(x))
-        x = self.pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.dropout(self.relu(self.fc1(x)))
-        return self.fc2(x)
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            # x: (batch, seq_len, n_features) → (batch, n_features, seq_len)
+            x = x.permute(0, 2, 1)
+            x = self.relu(self.conv1(x))
+            x = self.relu(self.conv2(x))
+            x = self.pool(x)
+            x = x.view(x.size(0), -1)
+            x = self.dropout(self.relu(self.fc1(x)))
+            return self.fc2(x)
+else:
+    RegimeCNN = None
 
 
 class RegimeDetectionModel:

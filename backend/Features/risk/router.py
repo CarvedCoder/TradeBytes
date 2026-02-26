@@ -8,9 +8,9 @@ from pydantic import BaseModel, UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from core.database import get_db
-from core.redis_client import RedisCache
-from risk.metrics import RiskEngine, compute_log_returns, compute_max_drawdown
+from backend.Features.core.database import get_db
+from backend.Features.core.redis_client import RedisCache
+from backend.Features.risk.metrics import RiskEngine, compute_log_returns, compute_max_drawdown
 
 router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
 cache = RedisCache("risk")

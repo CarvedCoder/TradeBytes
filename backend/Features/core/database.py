@@ -1,14 +1,14 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-from core.config import get_settings
+from backend.core.config import get_settings
 
 settings = get_settings()
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_size=20,
-    max_overflow=10,
-    echo=False,
+    settings.database_url,
+    pool_size=getattr(settings, "database_pool_size", 20),
+    max_overflow=getattr(settings, "database_max_overflow", 10),
+    echo=getattr(settings, "debug", False),
 )
 
 AsyncSessionLocal = async_sessionmaker(

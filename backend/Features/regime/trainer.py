@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 import structlog
 
-from regime.model import RegimeDetectionModel
-from regime.features import engineer_features
-from core.config import get_settings
+from backend.Features.regime.model import RegimeDetectionModel
+from backend.Features.regime.features import engineer_features
+from backend.core.config import get_settings
 
 logger = structlog.get_logger()
 settings = get_settings()

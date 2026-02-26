@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 import pandas as pd
 
-from core.database import get_db
-from core.redis_client import RedisCache
-from behavioral.profiler import BehavioralProfiler
+from backend.Features.core.database import get_db
+from backend.Features.core.redis_client import RedisCache
+from backend.Features.behavioral.profiler import BehavioralProfiler
 
 router = APIRouter(prefix="/api/v1/behavioral", tags=["behavioral"])
 cache = RedisCache("behavioral")

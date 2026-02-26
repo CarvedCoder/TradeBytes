@@ -58,3 +58,4 @@ logs/
 htmlcov/
 .coverage
 coverage/
+.venv/

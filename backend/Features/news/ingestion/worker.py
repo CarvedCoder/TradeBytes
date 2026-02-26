@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 from simhash import Simhash
 
-from core.redis_client import get_redis, RedisCache
+from backend.Features.core.redis_client import get_redis, RedisCache
 
 logger = structlog.get_logger()
 cache = RedisCache("news_dedup")

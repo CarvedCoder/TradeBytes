@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 import structlog
 
-from regime.model import RegimeDetectionModel, RegimeOutput
-from regime.features import engineer_features
-from core.config import get_settings
-from core.redis_client import RedisCache
+from backend.Features.regime.model import RegimeDetectionModel, RegimeOutput
+from backend.Features.regime.features import engineer_features
+from backend.core.config import get_settings
+from backend.Features.core.redis_client import RedisCache
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -91,7 +91,7 @@ async def infer_regime(
     }, ttl=300)
 
     # Publish regime change event to Redis
-    from core.redis_client import RedisCache
+    from backend.Features.core.redis_client import RedisCache
     pub = RedisCache("events")
     await pub.publish("regime_updates", {
         "asset_id": asset_id,

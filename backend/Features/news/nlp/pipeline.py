@@ -1,5 +1,10 @@
 import re
-import torch
+try:
+    import torch
+    _TORCH_AVAILABLE = True
+except Exception:
+    torch = None
+    _TORCH_AVAILABLE = False
 import numpy as np
 from dataclasses import dataclass
 from functools import lru_cache
@@ -165,7 +170,7 @@ _pipeline: Optional[NLPPipeline] = None
 def get_nlp_pipeline() -> NLPPipeline:
     global _pipeline
     if _pipeline is None:
-        from core.config import get_settings
+        from backend.core.config import get_settings
         s = get_settings()
         _pipeline = NLPPipeline(s.HUGGINGFACE_MODEL, s.SPACY_MODEL, s.EMBEDDING_MODEL)
     return _pipeline

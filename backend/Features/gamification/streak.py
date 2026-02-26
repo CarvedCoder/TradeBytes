@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from core.redis_client import get_redis
+from backend.Features.core.redis_client import get_redis
 
 
 class StreakTracker:

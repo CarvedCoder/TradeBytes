@@ -7,7 +7,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import structlog
 
-from behavioral.metrics import (
+from backend.Features.behavioral.metrics import (
     compute_risk_tolerance_score, compute_profit_factor, compute_win_loss_asymmetry,
     compute_overtrading_z, compute_diversification_behaviour, compute_loss_recovery_speed,
     compute_trade_duration_stats, compute_disposition_effect, compute_overconfidence,

@@ -1,7 +1,7 @@
 import math
 from dataclasses import dataclass
 from typing import Optional
-from core.config import get_settings
+from backend.core.config import get_settings
 
 settings = get_settings()
 

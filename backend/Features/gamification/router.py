@@ -7,15 +7,19 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 
-from core.database import get_db
-from core.redis_client import RedisCache
-from gamification.xp_engine import (
-    compute_xp_award, compute_level, xp_for_level,
-    get_new_unlocks, check_anti_cheat, FEATURE_UNLOCKS,
+from backend.Features.core.database import get_db
+from backend.Features.core.redis_client import RedisCache
+from backend.Features.gamification.xp_engine import (
+    compute_xp_award,
+    compute_level,
+    xp_for_level,
+    get_new_unlocks,
+    check_anti_cheat,
+    FEATURE_UNLOCKS,
 )
-from gamification.streak import StreakTracker
-from gamification.badges import check_and_award_badges
-from gamification.leaderboard import update_leaderboard
+from backend.Features.gamification.streak import StreakTracker
+from backend.Features.gamification.badges import check_and_award_badges
+from backend.Features.gamification.leaderboard import update_leaderboard
 
 router = APIRouter(prefix="/api/v1/gamification", tags=["gamification"])
 cache = RedisCache("gamification")

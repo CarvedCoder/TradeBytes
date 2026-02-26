@@ -4,9 +4,9 @@ from pydantic import BaseModel, UUID4
 from typing import Optional
 import pandas as pd
 
-from core.database import get_db
-from regime.inference import infer_regime, get_regime_history, load_active_model, _active_model
-from regime.trainer import RegimeTrainer
+from backend.Features.core.database import get_db
+from backend.Features.regime.inference import infer_regime, get_regime_history, load_active_model, _active_model
+from backend.Features.regime.trainer import RegimeTrainer
 
 router = APIRouter(prefix="/api/v1/regime", tags=["regime"])
 

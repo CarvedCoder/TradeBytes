@@ -5,9 +5,9 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 
-from core.database import get_db
-from news.correlation import compute_news_price_correlation, semantic_search
-from news.nlp.pipeline import get_nlp_pipeline
+from backend.Features.core.database import get_db
+from backend.Features.news.correlation import compute_news_price_correlation, semantic_search
+from backend.Features.news.nlp.pipeline import get_nlp_pipeline
 
 router = APIRouter(prefix="/api/v1/news", tags=["news"])
 

@@ -6,9 +6,9 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from news.nlp.pipeline import get_nlp_pipeline
-from core.database import AsyncSessionLocal
-from core.redis_client import get_redis
+from backend.Features.news.nlp.pipeline import get_nlp_pipeline
+from backend.Features.core.database import AsyncSessionLocal
+from backend.Features.core.redis_client import get_redis
 
 logger = structlog.get_logger()
 STREAM_KEY = "news:raw_stream"
