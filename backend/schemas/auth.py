@@ -23,6 +23,9 @@ class RegistrationBeginResponse(BaseModel):
 class RegistrationCompleteRequest(BaseModel):
     credential: dict  # AuthenticatorAttestationResponse
     challenge_id: str
+    username: str
+    display_name: str
+    email: str
 
 
 class AuthenticationBeginRequest(BaseModel):

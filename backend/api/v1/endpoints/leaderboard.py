@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get("/", response_model=LeaderboardResponse)
 async def get_leaderboard(
     db: AsyncSession = Depends(get_db),
-    period: str = Query(default="weekly", pattern="^(daily|weekly|all_time)$"),
+    period: str = Query(default="weekly", pattern="^(daily|weekly|monthly|all_time)$"),
     limit: int = Query(default=50, le=100),
 ):
     """Get leaderboard rankings for given period."""
@@ -30,7 +30,7 @@ async def get_leaderboard(
 async def get_my_rank(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-    period: str = Query(default="weekly", pattern="^(daily|weekly|all_time)$"),
+    period: str = Query(default="weekly", pattern="^(daily|weekly|monthly|all_time)$"),
 ):
     """Get current user's rank and nearby players."""
     service = LeaderboardService(db)

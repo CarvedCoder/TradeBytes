@@ -11,6 +11,7 @@ Implements the full WebAuthn ceremony:
 from __future__ import annotations
 
 import base64
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -108,7 +109,10 @@ class AuthService:
             },
         }
 
-    async def complete_registration(self, credential: dict, challenge_id: str) -> User:
+    async def complete_registration(
+        self, credential: dict, challenge_id: str,
+        username: str = "", display_name: str = "", email: str = "",
+    ) -> User:
         """Verify WebAuthn attestation and create user + passkey.
         
         Validates the authenticator's response against our challenge,
@@ -131,9 +135,9 @@ class AuthService:
         # Create user
         user = User(
             id=challenge_entry.user_id,
-            username=credential.get("_username", f"user_{challenge_entry.user_id}"),
-            display_name=credential.get("_display_name", "New User"),
-            email=credential.get("_email", ""),
+            username=username or f"user_{challenge_entry.user_id}",
+            display_name=display_name or "New User",
+            email=email or "",
         )
         self.db.add(user)
 

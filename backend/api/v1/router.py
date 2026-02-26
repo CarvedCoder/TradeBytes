@@ -32,6 +32,6 @@ api_router.include_router(news_router, prefix="/news", tags=["News Intelligence"
 api_router.include_router(challenges_router, prefix="/challenges", tags=["Daily Challenges"])
 api_router.include_router(learning_router, prefix="/learning", tags=["Learning Paths"])
 api_router.include_router(leaderboard_router, prefix="/leaderboard", tags=["Leaderboard"])
-api_router.include_router(advisor_router, prefix="/advisor", tags=["AI Advisor"])
+api_router.include_router(advisor_router, prefix="/ai-advisor", tags=["AI Advisor"])
 api_router.include_router(prediction_router, prefix="/prediction", tags=["AI Prediction"])
 api_router.include_router(community_router, prefix="/community", tags=["Community"])
