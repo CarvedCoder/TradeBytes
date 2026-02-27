@@ -3,7 +3,7 @@
  * Used for challenge/lesson completion status.
  */
 
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ProgressRingProps {

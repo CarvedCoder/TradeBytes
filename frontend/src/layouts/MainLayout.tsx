@@ -3,7 +3,7 @@
  * Preserves existing routing and auth flow.
  */
 
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useGamificationStore } from '@/stores/gamificationStore';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,6 @@ import {
   Flame,
   Star,
   Shield,
-  ChevronUp,
 } from 'lucide-react';
 
 const navItems = [
@@ -36,8 +35,7 @@ const navItems = [
 
 export default function MainLayout() {
   const { user, logout } = useAuthStore();
-  const { level, currentStreak, totalXp, xpToNextLevel, recentXpGain } = useGamificationStore();
-  const location = useLocation();
+  const { level, currentStreak, totalXp, xpToNextLevel } = useGamificationStore();
 
   const xpPercent = Math.min((totalXp / Math.max(xpToNextLevel, 1)) * 100, 100);
   const isHotStreak = currentStreak >= 7;
