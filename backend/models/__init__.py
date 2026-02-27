@@ -27,6 +27,7 @@ from backend.models.news import (
     FeatureMetadata,
     ChatMessage,
 )
+from backend.models.alerts import Alert, AlertAudit
 
 __all__ = [
     "User",
@@ -51,4 +52,6 @@ __all__ = [
     "ModelMetadata",
     "FeatureMetadata",
     "ChatMessage",
+    "Alert",
+    "AlertAudit",
 ]

@@ -42,11 +42,14 @@ async def registration_begin(
     navigator.credentials.create() API.
     """
     service = AuthService(db)
-    result = await service.begin_registration(
-        username=request.username,
-        display_name=request.display_name,
-        email=request.email,
-    )
+    try:
+        result = await service.begin_registration(
+            username=request.username,
+            display_name=request.display_name,
+            email=request.email,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     return RegistrationBeginResponse(
         options=result["options"],
         challenge_id=result["challenge_id"],
@@ -64,13 +67,16 @@ async def registration_complete(
     creates the user, initializes gamification state, and returns JWT token pair.
     """
     service = AuthService(db)
-    user = await service.complete_registration(
-        credential=request.credential,
-        challenge_id=request.challenge_id,
-        username=request.username,
-        display_name=request.display_name,
-        email=request.email,
-    )
+    try:
+        user = await service.complete_registration(
+            credential=request.credential,
+            challenge_id=request.challenge_id,
+            username=request.username,
+            display_name=request.display_name,
+            email=request.email,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     tokens = create_token_pair(str(user.id))
     return AuthResponse(
         user_id=str(user.id),
@@ -91,7 +97,10 @@ async def login_begin(
     navigator.credentials.get() API.
     """
     service = AuthService(db)
-    result = await service.begin_authentication(username=request.username)
+    try:
+        result = await service.begin_authentication(username=request.username)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     return AuthenticationBeginResponse(
         options=result["options"],
         challenge_id=result["challenge_id"],
@@ -109,10 +118,13 @@ async def login_complete(
     updates sign count, refreshes streak, and returns JWT token pair.
     """
     service = AuthService(db)
-    user = await service.complete_authentication(
-        credential=request.credential,
-        challenge_id=request.challenge_id,
-    )
+    try:
+        user = await service.complete_authentication(
+            credential=request.credential,
+            challenge_id=request.challenge_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     tokens = create_token_pair(str(user.id))
     return AuthResponse(
         user_id=str(user.id),

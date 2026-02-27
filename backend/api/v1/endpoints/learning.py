@@ -4,7 +4,7 @@ Learning Paths Endpoints.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.database import get_db
@@ -39,7 +39,10 @@ async def get_learning_path(
 ):
     """Get a specific learning path with modules and progress."""
     service = LearningService(db)
-    return await service.get_path(user_id, path_slug)
+    try:
+        return await service.get_path(user_id, path_slug)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/modules/{module_id}", response_model=LearningModuleResponse)
@@ -50,7 +53,10 @@ async def get_module(
 ):
     """Get a specific learning module content."""
     service = LearningService(db)
-    return await service.get_module(user_id, module_id)
+    try:
+        return await service.get_module(user_id, module_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/modules/{module_id}/complete", response_model=ModuleCompletionResponse)
@@ -66,7 +72,10 @@ async def complete_module(
     If completing a path, checks for feature unlocks.
     """
     service = LearningService(db)
-    return await service.complete_module(user_id, module_id, request)
+    try:
+        return await service.complete_module(user_id, module_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/progress", response_model=UserProgressResponse)

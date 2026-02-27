@@ -80,7 +80,7 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
 
   addTrade: (trade) =>
     set((state) => ({
-      trades: [...state.trades, trade],
+      trades: trade ? [...state.trades, trade] : state.trades,
     })),
 
   setStatus: (status) => set({ status }),

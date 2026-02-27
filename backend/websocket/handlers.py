@@ -3,7 +3,7 @@ WebSocket Route Handlers.
 
 Defines WebSocket endpoint handlers for:
 - /ws/simulation/{session_id} — Real-time candle streaming
-- /ws/community/{channel} — Community chat
+- /ws/community/{channel} — Community chat (persists messages to DB)
 - /ws/prices — Live price ticker updates
 - /ws/notifications — User-specific notifications
 """
@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
 from jose import jwt
 
 from backend.core.config import get_settings
+from backend.core.database import sessionmanager
 from backend.core.redis import get_redis, RedisManager
 from backend.websocket.manager import ws_manager
 
@@ -195,11 +196,23 @@ async def community_chat(
     Messages:
     - Server → Client: chat messages, user join/leave, typing indicators
     - Client → Server: send message, typing start/stop
+    
+    Every incoming message is persisted to the chat_messages table.
     """
     user_id = await get_ws_user_id(websocket, token)
     channel = f"chat:{channel_name}"
 
     await ws_manager.connect(websocket, user_id, channel)
+
+    # Resolve user display info once on connect
+    user_info: dict = {"display_name": user_id[:8], "username": "unknown", "avatar_url": None}
+    try:
+        async for db in sessionmanager.session():
+            from backend.services.community_service import CommunityService
+            svc = CommunityService(db)
+            user_info = await svc.get_user_display(user_id)
+    except Exception:
+        logger.warning("community_ws.user_lookup_failed", user_id=user_id)
 
     # Send current online users
     await ws_manager.send_to_user(user_id, {
@@ -213,12 +226,38 @@ async def community_chat(
             msg_type = data.get("type", "")
 
             if msg_type == "message":
+                content = data.get("content", "").strip()
+                if not content:
+                    continue
+
+                now = datetime.now(timezone.utc)
+
+                # Persist to database
+                saved_id: str | None = None
+                try:
+                    async for db in sessionmanager.session():
+                        from backend.services.community_service import CommunityService
+                        svc = CommunityService(db)
+                        msg_obj = await svc.save_message(
+                            user_id=user_id,
+                            channel=channel_name,
+                            content=content,
+                            message_type=data.get("message_type", "text"),
+                        )
+                        saved_id = str(msg_obj.id)
+                except Exception:
+                    logger.exception("community_ws.save_failed", channel=channel_name)
+
                 broadcast = {
                     "type": "chat_message",
+                    "id": saved_id,
                     "user_id": user_id,
-                    "content": data.get("content", ""),
+                    "display_name": user_info.get("display_name", user_id[:8]),
+                    "username": user_info.get("username", "unknown"),
+                    "avatar_url": user_info.get("avatar_url"),
+                    "content": content,
                     "channel": channel_name,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now.isoformat(),
                 }
                 await ws_manager.broadcast_to_channel(channel, broadcast)
 
@@ -226,6 +265,7 @@ async def community_chat(
                 await ws_manager.broadcast_to_channel(channel, {
                     "type": "user_typing",
                     "user_id": user_id,
+                    "display_name": user_info.get("display_name", user_id[:8]),
                 }, exclude_user=user_id)
 
             elif msg_type == "typing_stop":

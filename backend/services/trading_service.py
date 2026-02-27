@@ -27,6 +27,12 @@ class TradingService:
         """Execute a simulated trade and trigger AI competitor."""
         uid = uuid.UUID(user_id)
 
+        # Verify user exists
+        from backend.models.user import User
+        user = await self.db.get(User, uid)
+        if not user:
+            raise ValueError("User not found")
+
         # Get portfolio
         result = await self.db.execute(select(Portfolio).where(Portfolio.user_id == uid))
         portfolio = result.scalar_one_or_none()
@@ -157,11 +163,20 @@ class TradingService:
     ) -> None:
         position = await self._get_position(portfolio.id, ticker)
         if not position:
-            position = Position(portfolio_id=portfolio.id, ticker=ticker)
+            position = Position(
+                portfolio_id=portfolio.id,
+                ticker=ticker,
+                shares=0.0,
+                avg_cost=0.0,
+                current_price=0.0,
+                market_value=0.0,
+                unrealized_pnl=0.0,
+                unrealized_pnl_pct=0.0,
+            )
             self.db.add(position)
 
         if side == "buy":
-            total_cost = position.avg_cost * position.shares + price * quantity
+            total_cost = (position.avg_cost or 0.0) * (position.shares or 0.0) + price * quantity
             position.shares += quantity
             position.avg_cost = total_cost / position.shares if position.shares > 0 else 0
         elif side == "sell":

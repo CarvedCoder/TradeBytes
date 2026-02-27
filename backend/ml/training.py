@@ -32,7 +32,7 @@ logger = structlog.get_logger()
 class TrainingConfig:
     """Training hyperparameters and configuration."""
     # Model architecture
-    input_size: int = 24
+    input_size: int = 19  # 19 market features (24 with sentiment)
     hidden_size: int = 128
     num_layers: int = 3
     dropout: float = 0.3
@@ -41,9 +41,10 @@ class TrainingConfig:
     # Training
     epochs: int = 100
     batch_size: int = 64
-    learning_rate: float = 1e-3
+    learning_rate: float = 3e-4
     weight_decay: float = 1e-5
     lr_scheduler: str = "cosine"  # "cosine", "step", "plateau"
+    warmup_epochs: int = 5
     early_stopping_patience: int = 15
     gradient_clip_norm: float = 1.0
 
@@ -127,9 +128,21 @@ class Trainer:
         self.scheduler: Any = None
         self.criterion: CombinedLoss | None = None
 
-    def train(self, X: np.ndarray, y_dir: np.ndarray, y_ret: np.ndarray) -> TrainingResult:
-        """Full training pipeline."""
+    def train(
+        self,
+        X: np.ndarray,
+        y_dir: np.ndarray,
+        y_ret: np.ndarray,
+        feature_scaler: dict | None = None,
+    ) -> TrainingResult:
+        """Full training pipeline.
+
+        Args:
+            feature_scaler: dict with 'means', 'stds', 'names' arrays from
+                FeatureBuilder, saved into checkpoints for inference.
+        """
         result = TrainingResult()
+        self._feature_scaler = feature_scaler or {}
 
         # 1. Split data (time-based)
         dataset = TimeSeriesDataset(X, y_dir, y_ret, self.config)
@@ -160,11 +173,22 @@ class Trainer:
             confidence_weight=self.config.confidence_weight,
         )
 
-        # Learning rate scheduler
+        # Learning rate scheduler with warmup
         if self.config.lr_scheduler == "cosine":
-            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                self.optimizer, T_max=self.config.epochs
+            main_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=self.config.epochs - self.config.warmup_epochs
             )
+            if self.config.warmup_epochs > 0:
+                warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+                    self.optimizer, start_factor=0.1, total_iters=self.config.warmup_epochs
+                )
+                self.scheduler = torch.optim.lr_scheduler.SequentialLR(
+                    self.optimizer,
+                    schedulers=[warmup_scheduler, main_scheduler],
+                    milestones=[self.config.warmup_epochs],
+                )
+            else:
+                self.scheduler = main_scheduler
         elif self.config.lr_scheduler == "plateau":
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 self.optimizer, patience=5, factor=0.5
@@ -299,6 +323,7 @@ class Trainer:
             "optimizer_state_dict": self.optimizer.state_dict() if self.optimizer else None,
             "metrics": metrics,
             "config": self.config,
+            "feature_scaler": getattr(self, '_feature_scaler', {}),
         }, path)
 
     def _load_best_checkpoint(self) -> None:
@@ -306,7 +331,7 @@ class Trainer:
         assert self.model is not None
         path = os.path.join(self.config.model_save_dir, f"{self.config.ticker}_best.pt")
         if os.path.exists(path):
-            checkpoint = torch.load(path, map_location=self.device)
+            checkpoint = torch.load(path, map_location=self.device, weights_only=False)
             self.model.load_state_dict(checkpoint["model_state_dict"])
 
     def _save_model(self) -> str:
@@ -321,6 +346,7 @@ class Trainer:
             "model_state_dict": self.model.state_dict(),
             "config": self.config,
             "timestamp": datetime.now().isoformat(),
+            "feature_scaler": getattr(self, '_feature_scaler', {}),
         }, path)
         logger.info("Model saved", path=path)
         return path
@@ -360,15 +386,17 @@ class BacktestEngine:
             price = float(prices[i])
             next_price = float(prices[i + 1]) if i + 1 < len(prices) else price
 
-            # Simple strategy: buy if confident bullish, sell if confident bearish
-            if direction_prob > 0.6 and confidence > 0.5 and position == 0:
+            # Simple strategy: buy if bullish, sell if bearish
+            # Use adaptive thresholds based on model's output distribution
+            if direction_prob > 0.52 and position == 0:
                 shares = capital / price
                 position = shares
                 capital = 0
                 trades.append({"type": "buy", "price": price, "shares": shares})
-            elif direction_prob < 0.4 and confidence > 0.5 and position > 0:
+            elif direction_prob < 0.48 and position > 0:
+                pnl = (price - trades[-1]["price"]) * position if trades else 0
                 capital = position * price
-                trades.append({"type": "sell", "price": price, "shares": position})
+                trades.append({"type": "sell", "price": price, "shares": position, "pnl": pnl})
                 position = 0
 
             portfolio_value = capital + position * next_price

@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import { useSimulationStore } from '@/stores/simulationStore';
 import { createSimulationWS, WebSocketClient } from '@/lib/websocket';
 import { formatCurrency, formatPercent, cn } from '@/lib/utils';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, Time, ColorType } from 'lightweight-charts';
 import {
   Play,
   Pause,
@@ -31,7 +32,13 @@ export default function SimulationPage() {
   const [endDate, setEndDate] = useState('2024-01-01');
   const [startingCapital, setStartingCapital] = useState(10000);
   const [tradeQuantity, setTradeQuantity] = useState(10);
+  const [tradeError, setTradeError] = useState<string | null>(null);
   const wsRef = useRef<WebSocketClient | null>(null);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const prevCandleCountRef = useRef(0);
 
   // Create simulation session
   const createSession = useMutation({
@@ -46,9 +53,27 @@ export default function SimulationPage() {
     mutationFn: (data: { side: 'buy' | 'sell'; quantity: number }) =>
       api.post(`/simulation/sessions/${store.sessionId}/trade`, data).then((r) => r.data),
     onSuccess: (data) => {
-      store.addTrade(data.trade);
-      store.updateBalance(data.balance);
-      store.updatePosition(data.position);
+      setTradeError(null);
+      // Backend returns flat SimulationTradeResponse
+      store.addTrade({
+        id: data.trade_id,
+        side: data.side,
+        quantity: data.quantity,
+        price: data.price,
+        pnl: data.pnl,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      store.updateBalance(data.cash_balance);
+      store.updatePosition(
+        data.shares_held > 0
+          ? { quantity: data.shares_held, avgPrice: data.price }
+          : null
+      );
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.detail ?? 'Trade failed';
+      setTradeError(msg);
+      setTimeout(() => setTradeError(null), 3000);
     },
   });
 
@@ -75,13 +100,100 @@ export default function SimulationPage() {
     return () => ws.disconnect();
   }, [store.sessionId, store.status]);
 
+  // Initialize lightweight-charts
+  useEffect(() => {
+    if (!chartContainerRef.current || store.status === 'idle') return;
+
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: 400,
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#9ca3af',
+      },
+      grid: {
+        vertLines: { color: 'rgba(255,255,255,0.04)' },
+        horzLines: { color: 'rgba(255,255,255,0.04)' },
+      },
+      crosshair: { mode: 0 },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
+      timeScale: {
+        borderColor: 'rgba(255,255,255,0.1)',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
+
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#22c55e',
+      downColor: '#ef4444',
+      borderDownColor: '#ef4444',
+      borderUpColor: '#22c55e',
+      wickDownColor: '#ef4444',
+      wickUpColor: '#22c55e',
+    });
+
+    const volumeSeries = chart.addHistogramSeries({
+      color: '#6366f1',
+      priceFormat: { type: 'volume' },
+      priceScaleId: '',
+    });
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.85, bottom: 0 },
+    });
+
+    chartRef.current = chart;
+    candleSeriesRef.current = candleSeries;
+    volumeSeriesRef.current = volumeSeries;
+    prevCandleCountRef.current = 0;
+
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+    };
+  }, [store.status !== 'idle']); // re-create only on idle ↔ active transition
+
+  // Stream candles into the chart
+  useEffect(() => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+    const newCandles = store.candles.slice(prevCandleCountRef.current);
+    if (newCandles.length === 0) return;
+
+    for (const c of newCandles) {
+      const point: CandlestickData = {
+        time: c.time as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      };
+      candleSeriesRef.current!.update(point);
+      volumeSeriesRef.current!.update({
+        time: c.time as Time,
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)',
+      });
+    }
+    prevCandleCountRef.current = store.candles.length;
+  }, [store.candles.length]);
+
   const handleStart = () => {
     createSession.mutate({
       ticker,
       start_date: startDate,
       end_date: endDate,
-      starting_capital: startingCapital,
-      speed: store.speed,
+      initial_capital: startingCapital,
+      playback_speed: store.speed,
     });
   };
 
@@ -181,16 +293,18 @@ export default function SimulationPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-            {/* Chart Area (placeholder) */}
+            {/* Candlestick Chart */}
             <div className="card lg:col-span-3">
-              <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed border-surface-700">
-                <div className="text-center text-surface-200">
-                  <Activity className="mx-auto mb-2 h-8 w-8" />
-                  <p className="text-sm">Candlestick chart renders here</p>
-                  <p className="text-xs">Using lightweight-charts library</p>
-                  <p className="mt-2 text-xs">{store.candles.length} candles loaded</p>
+              <div ref={chartContainerRef} className="h-[400px] w-full" />
+              {store.candles.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-surface-200">
+                    <Activity className="mx-auto mb-2 h-8 w-8" />
+                    <p className="text-sm">Waiting for candle data…</p>
+                    <p className="text-xs">{store.status === 'running' ? 'Streaming will begin shortly' : 'Start a simulation to see the chart'}</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Trade Panel */}
@@ -239,18 +353,21 @@ export default function SimulationPage() {
                     className="input-field"
                   />
                 </div>
+                {tradeError && (
+                  <p className="rounded bg-danger/10 px-2 py-1 text-xs text-danger">{tradeError}</p>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => executeTrade.mutate({ side: 'buy', quantity: tradeQuantity })}
                     className="btn-success w-full py-3 font-bold"
-                    disabled={store.status !== 'running'}
+                    disabled={store.status !== 'running' || executeTrade.isPending}
                   >
                     BUY
                   </button>
                   <button
                     onClick={() => executeTrade.mutate({ side: 'sell', quantity: tradeQuantity })}
                     className="btn-danger w-full py-3 font-bold"
-                    disabled={store.status !== 'running'}
+                    disabled={store.status !== 'running' || !store.position || executeTrade.isPending}
                   >
                     SELL
                   </button>
@@ -291,7 +408,7 @@ export default function SimulationPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {store.trades.map((trade) => (
+                    {store.trades.filter(Boolean).map((trade) => (
                       <tr key={trade.id} className="border-b border-surface-800">
                         <td className={cn('py-2', trade.side === 'buy' ? 'text-success' : 'text-danger')}>
                           {trade.side.toUpperCase()}

@@ -11,9 +11,11 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from backend.core.config import get_settings
 from backend.core.database import engine, sessionmanager
@@ -79,6 +81,60 @@ def create_app() -> FastAPI:
     # ── WebSocket Routes ──
     from backend.websocket.handlers import router as ws_router
     app.include_router(ws_router)
+
+    # ── Alert WebSocket ──
+    from backend.api.v1.endpoints.alerts import alerts_ws_endpoint
+    app.add_api_websocket_route("/ws/alerts", alerts_ws_endpoint)
+
+    # ── Centralized Exception Handlers ──
+
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+        """Map service-layer ValueError to proper HTTP 400/404 responses."""
+        message = str(exc)
+        # Determine if it's a "not found" or a validation error
+        not_found_keywords = ["not found", "not exist", "no ", "expired"]
+        status_code = 404 if any(kw in message.lower() for kw in not_found_keywords) else 400
+        logger.warning(
+            "Request error",
+            path=request.url.path,
+            method=request.method,
+            detail=message,
+            status_code=status_code,
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": message},
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+        """Handle database integrity constraint violations."""
+        logger.error(
+            "Database integrity error",
+            path=request.url.path,
+            method=request.method,
+            detail=str(exc.orig) if exc.orig else str(exc),
+        )
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "Data conflict: a resource with the given identifiers already exists or a constraint was violated."},
+        )
+
+    @app.exception_handler(Exception)
+    async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Catch-all for unhandled exceptions — prevent raw 500 stacktraces from leaking."""
+        logger.error(
+            "Unhandled exception",
+            path=request.url.path,
+            method=request.method,
+            exc_type=type(exc).__name__,
+            detail=str(exc)[:500],
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "An internal server error occurred. Please try again later."},
+        )
 
     # ── Health Check ──
     @app.get("/health")

@@ -19,6 +19,7 @@ from backend.api.v1.endpoints.leaderboard import router as leaderboard_router
 from backend.api.v1.endpoints.ai_advisor import router as advisor_router
 from backend.api.v1.endpoints.ai_prediction import router as prediction_router
 from backend.api.v1.endpoints.community import router as community_router
+from backend.api.v1.endpoints.alerts import router as alerts_router
 
 api_router = APIRouter()
 
@@ -35,3 +36,4 @@ api_router.include_router(leaderboard_router, prefix="/leaderboard", tags=["Lead
 api_router.include_router(advisor_router, prefix="/ai-advisor", tags=["AI Advisor"])
 api_router.include_router(prediction_router, prefix="/prediction", tags=["AI Prediction"])
 api_router.include_router(community_router, prefix="/community", tags=["Community"])
+api_router.include_router(alerts_router, prefix="/alerts", tags=["Alerts"])

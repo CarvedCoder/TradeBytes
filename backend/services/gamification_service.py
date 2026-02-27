@@ -296,6 +296,11 @@ class GamificationService:
         )
         gam = result.scalar_one_or_none()
         if not gam:
+            # Verify user exists before creating gamification state
+            from backend.models.user import User
+            user = await self.db.get(User, uuid.UUID(user_id))
+            if not user:
+                raise ValueError("User not found")
             gam = UserGamification(user_id=uuid.UUID(user_id))
             self.db.add(gam)
             await self.db.flush()

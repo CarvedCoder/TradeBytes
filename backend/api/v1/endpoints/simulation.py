@@ -53,7 +53,10 @@ async def create_simulation(
     Returns session_id for WebSocket connection.
     """
     service = SimulationService(db)
-    return await service.create_session(user_id, request)
+    try:
+        return await service.create_session(user_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{session_id}/state", response_model=SimulationState)
@@ -64,7 +67,10 @@ async def get_simulation_state(
 ):
     """Get current simulation state (positions, PnL, candle index)."""
     service = SimulationService(db)
-    return await service.get_state(user_id, session_id)
+    try:
+        return await service.get_state(user_id, session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/{session_id}/control")
@@ -76,7 +82,10 @@ async def control_simulation(
 ):
     """Control simulation playback: play, pause, speed change, skip."""
     service = SimulationService(db)
-    return await service.control(user_id, session_id, request)
+    try:
+        return await service.control(user_id, session_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/sessions/{session_id}/trade", response_model=SimulationTradeResponse)
@@ -107,4 +116,7 @@ async def get_simulation_result(
 ):
     """Get final simulation results after session completion."""
     service = SimulationService(db)
-    return await service.get_result(user_id, session_id)
+    try:
+        return await service.get_result(user_id, session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

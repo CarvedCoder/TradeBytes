@@ -4,7 +4,7 @@ Trading Endpoints - Execute simulated trades.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.database import get_db
@@ -34,7 +34,10 @@ async def execute_trade(
     4. Awards XP via gamification engine
     """
     service = TradingService(db)
-    return await service.execute_trade(user_id, trade)
+    try:
+        return await service.execute_trade(user_id, trade)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/history", response_model=list[TradeHistory])
@@ -58,4 +61,7 @@ async def get_trade_detail(
 ):
     """Get details of a specific trade including AI explanation."""
     service = TradingService(db)
-    return await service.get_trade_detail(user_id, trade_id)
+    try:
+        return await service.get_trade_detail(user_id, trade_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

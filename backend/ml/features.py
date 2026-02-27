@@ -182,12 +182,20 @@ class SentimentFeatureGenerator:
 
 
 class FeatureBuilder:
-    """Builds complete feature tensors for LSTM input."""
+    """Builds complete feature tensors for LSTM input.
+    
+    Applies per-feature z-score standardization to ensure all features
+    have similar scale, which is critical for LSTM convergence.
+    """
 
     def __init__(self, config: FeatureConfig | None = None) -> None:
         self.config = config or FeatureConfig()
         self.market_gen = MarketFeatureGenerator(self.config)
         self.sentiment_gen = SentimentFeatureGenerator()
+        # Scaler statistics (fitted during build_tensor, reused for inference)
+        self.feature_means_: np.ndarray | None = None
+        self.feature_stds_: np.ndarray | None = None
+        self.feature_names_: list[str] | None = None
 
     def build_tensor(
         self,
@@ -197,32 +205,41 @@ class FeatureBuilder:
         """Build feature tensors for LSTM training/inference.
         
         Returns:
-            X: (num_samples, seq_len, num_features) - input features
+            X: (num_samples, seq_len, num_features) - standardized input features
             y_direction: (num_samples,) - binary direction labels
             y_return: (num_samples,) - actual returns
         """
         # Compute market features
         featured_df = self.market_gen.compute(ohlcv_df)
 
-        # Compute sentiment features
+        # Compute sentiment features (only include if real data provided)
         if sentiment_df is not None:
             sent_features = self.sentiment_gen.compute(sentiment_df, featured_df)
             featured_df = pd.concat([featured_df, sent_features], axis=1)
+            feature_pool = (self.config.market_features or []) + (self.config.sentiment_features or [])
         else:
-            for f in (self.config.sentiment_features or []):
-                featured_df[f] = 0.0
+            # No sentiment data: only use market features (avoids dead zero columns)
+            feature_pool = list(self.config.market_features or [])
 
-        # Select feature columns
-        all_features = (self.config.market_features or []) + (self.config.sentiment_features or [])
-        feature_cols = [c for c in all_features if c in featured_df.columns]
+        # Select feature columns that actually exist
+        feature_cols = [c for c in feature_pool if c in featured_df.columns]
 
         # Drop NaN rows (from rolling computations)
         featured_df = featured_df.dropna(subset=feature_cols)
 
-        # Create sequences
-        feature_matrix = featured_df[feature_cols].values
+        # Build feature matrix and compute scaler stats
+        feature_matrix = featured_df[feature_cols].values.astype(np.float32)
         close_prices = featured_df["close"].values
 
+        # Per-feature z-score normalization (fit on full data before sequencing)
+        self.feature_means_ = feature_matrix.mean(axis=0)
+        self.feature_stds_ = feature_matrix.std(axis=0)
+        self.feature_stds_[self.feature_stds_ < 1e-8] = 1.0  # avoid division by zero
+        self.feature_names_ = feature_cols
+
+        feature_matrix = (feature_matrix - self.feature_means_) / self.feature_stds_
+
+        # Create sequences
         seq_len = self.config.sequence_length
         X_sequences = []
         y_directions = []
@@ -241,16 +258,64 @@ class FeatureBuilder:
         return X, y_dir, y_ret
 
     def build_inference_tensor(
-        self, ohlcv_df: pd.DataFrame, sentiment_df: pd.DataFrame | None = None
+        self,
+        ohlcv_df: pd.DataFrame,
+        sentiment_df: pd.DataFrame | None = None,
+        scaler: dict | None = None,
     ) -> np.ndarray:
         """Build a single feature tensor for inference (last seq_len candles).
-        
+
+        If `scaler` is provided (dict with 'means', 'stds', 'names'), uses those
+        training-time statistics for normalization so the features match what the
+        model was trained on.  Without a scaler the stats are re-fitted on the
+        incoming data which causes train/inference skew.
+
         Returns: (1, seq_len, num_features)
         """
+        if scaler and 'means' in scaler and 'stds' in scaler:
+            return self._build_inference_with_scaler(ohlcv_df, sentiment_df, scaler)
+
+        # Fallback: re-fit on incoming data (not recommended for production)
         X, _, _ = self.build_tensor(ohlcv_df, sentiment_df)
         if len(X) == 0:
             raise ValueError("Insufficient data to build feature tensor")
         return X[-1:].copy()  # Last sequence only
+
+    def _build_inference_with_scaler(
+        self,
+        ohlcv_df: pd.DataFrame,
+        sentiment_df: pd.DataFrame | None,
+        scaler: dict,
+    ) -> np.ndarray:
+        """Build features using saved training-time normalization stats."""
+        featured_df = self.market_gen.compute(ohlcv_df)
+
+        if sentiment_df is not None:
+            sent_features = self.sentiment_gen.compute(sentiment_df, featured_df)
+            featured_df = pd.concat([featured_df, sent_features], axis=1)
+
+        feature_names = list(scaler['names'])
+        feature_cols = [c for c in feature_names if c in featured_df.columns]
+        if len(feature_cols) != len(feature_names):
+            missing = set(feature_names) - set(feature_cols)
+            raise ValueError(f"Missing features in data: {missing}")
+
+        featured_df = featured_df.dropna(subset=feature_cols)
+        feature_matrix = featured_df[feature_cols].values.astype(np.float32)
+
+        # Apply training-time normalization
+        means = np.array(scaler['means'], dtype=np.float32)
+        stds = np.array(scaler['stds'], dtype=np.float32)
+        feature_matrix = (feature_matrix - means) / stds
+
+        seq_len = self.config.sequence_length
+        if len(feature_matrix) < seq_len:
+            raise ValueError(
+                f"Need at least {seq_len} candles after feature computation, got {len(feature_matrix)}"
+            )
+
+        # Take the last seq_len rows as the single inference sequence
+        return feature_matrix[-seq_len:][np.newaxis, :, :]  # (1, seq_len, features)
 
 
 class FeatureStore:

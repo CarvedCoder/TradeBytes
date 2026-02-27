@@ -1,16 +1,20 @@
 /**
- * Community Page - Real-time chat channels via WebSocket.
+ * Community Page - Real-time chat channels via WebSocket + REST history.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { createCommunityWS, WebSocketClient } from '@/lib/websocket';
+import api from '@/lib/api';
 import { formatTimeAgo, cn } from '@/lib/utils';
-import { Users, Send, Hash, Circle } from 'lucide-react';
+import { Users, Send, Hash, Circle, Loader2 } from 'lucide-react';
 
 interface ChatMessage {
+  id?: string;
   user_id: string;
   display_name?: string;
+  username?: string;
+  avatar_url?: string | null;
   content: string;
   timestamp: string;
 }
@@ -22,17 +26,53 @@ export default function CommunityPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const wsRef = useRef<WebSocketClient | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
 
+  // Load persisted message history from REST API
+  const loadHistory = useCallback(async (channel: string) => {
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/community/messages/${channel}?limit=50`);
+      const mapped: ChatMessage[] = (data ?? []).map((m: any) => ({
+        id: m.id,
+        user_id: m.user_id,
+        display_name: m.display_name,
+        username: m.username,
+        avatar_url: m.avatar_url,
+        content: m.content,
+        timestamp: m.created_at,
+      }));
+      setMessages(mapped);
+    } catch {
+      // On error just start with empty messages
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    setMessages([]);
+    // Load history first, then connect WS for live messages
+    loadHistory(activeChannel);
 
     const ws = createCommunityWS(activeChannel, (msg) => {
       switch (msg.type) {
         case 'chat_message':
-          setMessages((prev) => [...prev, msg as unknown as ChatMessage]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: msg.id as string,
+              user_id: msg.user_id as string,
+              display_name: msg.display_name as string,
+              username: msg.username as string,
+              avatar_url: msg.avatar_url as string | null,
+              content: msg.content as string,
+              timestamp: msg.timestamp as string,
+            },
+          ]);
           break;
         case 'channel_state':
           setOnlineUsers((msg as any).online_users ?? []);
@@ -49,7 +89,7 @@ export default function CommunityPage() {
     wsRef.current = ws;
 
     return () => ws.disconnect();
-  }, [activeChannel]);
+  }, [activeChannel, loadHistory]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,6 +100,9 @@ export default function CommunityPage() {
     wsRef.current?.send({ type: 'message', content: inputValue });
     setInputValue('');
   };
+
+  const displayName = (msg: ChatMessage) =>
+    msg.display_name || msg.username || msg.user_id?.slice(0, 8) || '?';
 
   return (
     <div className="flex h-[calc(100vh-7rem)] gap-4">
@@ -113,12 +156,18 @@ export default function CommunityPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-auto p-4">
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-surface-200">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <span>Loading messages…</span>
+            </div>
+          ) : (
           <div className="space-y-4">
             {messages.map((msg, i) => (
-              <div key={i} className={cn('flex gap-3', msg.user_id === user?.id && 'justify-end')}>
+              <div key={msg.id ?? i} className={cn('flex gap-3', msg.user_id === user?.id && 'justify-end')}>
                 {msg.user_id !== user?.id && (
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-xs font-bold">
-                    {(msg.display_name ?? msg.user_id).charAt(0).toUpperCase()}
+                    {displayName(msg).charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className={cn(
@@ -129,7 +178,7 @@ export default function CommunityPage() {
                 )}>
                   {msg.user_id !== user?.id && (
                     <p className="mb-0.5 text-xs font-medium text-primary-300">
-                      {msg.display_name ?? msg.user_id.slice(0, 8)}
+                      {displayName(msg)}
                     </p>
                   )}
                   <p className="text-sm">{msg.content}</p>
@@ -141,8 +190,9 @@ export default function CommunityPage() {
             ))}
             <div ref={messagesEndRef} />
           </div>
+          )}
 
-          {messages.length === 0 && (
+          {!loading && messages.length === 0 && (
             <div className="flex h-full items-center justify-center text-surface-200">
               <p>No messages yet. Say hello! 👋</p>
             </div>

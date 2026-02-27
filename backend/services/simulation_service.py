@@ -76,6 +76,12 @@ class SimulationService:
         """
         uid = uuid.UUID(user_id)
 
+        # Verify user exists
+        from backend.models.user import User
+        user = await self.db.get(User, uid)
+        if not user:
+            raise ValueError("User not found")
+
         # Count available candles in range
         total_candles = await self._count_candles(
             request.ticker, request.start_date, request.end_date

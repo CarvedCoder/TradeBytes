@@ -256,11 +256,16 @@ class CombinedLoss(nn.Module):
         # Direction loss (BCE)
         direction_loss = self.bce(prediction.direction_logit, direction_target.float())
 
-        # Magnitude loss (MSE)
-        magnitude_loss = self.mse(prediction.expected_return, return_target)
+        # Magnitude loss (MSE) — scale target to match model output range
+        # Model outputs ±0.1 (Tanh * 0.1), daily returns are ~±0.02
+        # Scale returns by 10x so MSE is in a comparable range to BCE
+        scaled_return_target = return_target * 10.0  # now ~±0.2 range
+        scaled_return_pred = prediction.expected_return * 10.0  # also scale pred
+        magnitude_loss = self.mse(scaled_return_pred, scaled_return_target)
 
         # Confidence calibration loss
-        direction_correct = (prediction.direction_prob.round() == direction_target).float()
+        # Detach direction_prob to avoid conflicting gradients
+        direction_correct = ((prediction.direction_prob.detach() > 0.5).float() == direction_target).float()
         confidence_loss = self.mse(prediction.confidence, direction_correct)
 
         total_loss = (
