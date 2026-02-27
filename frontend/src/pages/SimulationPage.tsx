@@ -7,7 +7,8 @@
  * - PnL tracking and trade history
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useSimulationStore } from '@/stores/simulationStore';
 import { createSimulationWS, WebSocketClient } from '@/lib/websocket';
