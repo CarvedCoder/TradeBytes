@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { formatTimeAgo, cn } from '@/lib/utils';
+import { formatTimeAgo } from '@/lib/utils';
 import { Newspaper, TrendingUp, TrendingDown, Minus, Search, ExternalLink } from 'lucide-react';
 
 export default function NewsPage() {

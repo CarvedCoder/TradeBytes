@@ -34,6 +34,10 @@ export default {
           50: '#f8fafc',
           100: '#f1f5f9',
           200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
@@ -42,6 +46,9 @@ export default {
         success: '#22c55e',
         danger: '#ef4444',
         warning: '#f59e0b',
+        xp: '#fbbf24',
+        streak: '#f97316',
+        legendary: '#a855f7',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -50,7 +57,19 @@ export default {
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',
+        'slide-up-delay': 'slideUp 0.4s ease-out 0.1s both',
+        'slide-up-delay-2': 'slideUp 0.4s ease-out 0.2s both',
         'pulse-glow': 'pulseGlow 2s infinite',
+        'streak-pulse': 'streakPulse 1.5s ease-in-out infinite',
+        'xp-fill': 'xpFill 1s ease-out',
+        'xp-float': 'xpFloat 1.2s ease-out forwards',
+        'level-up': 'levelUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'badge-earn': 'badgeEarn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'ring-fill': 'ringFill 1.2s ease-out forwards',
+        'card-enter': 'cardEnter 0.35s ease-out',
+        'bounce-in': 'bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'shimmer': 'shimmer 2s linear infinite',
+        'flame-flicker': 'flameFlicker 0.8s ease-in-out infinite alternate',
       },
       keyframes: {
         fadeIn: {
@@ -64,6 +83,50 @@ export default {
         pulseGlow: {
           '0%, 100%': { boxShadow: '0 0 5px rgba(99, 102, 241, 0.3)' },
           '50%': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.6)' },
+        },
+        streakPulse: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.08)', opacity: '0.85' },
+        },
+        xpFill: {
+          '0%': { width: '0%' },
+          '100%': { width: 'var(--xp-percent)' },
+        },
+        xpFloat: {
+          '0%': { opacity: '0', transform: 'translateY(0) scale(0.5)' },
+          '40%': { opacity: '1', transform: 'translateY(-20px) scale(1.1)' },
+          '100%': { opacity: '0', transform: 'translateY(-50px) scale(0.9)' },
+        },
+        levelUp: {
+          '0%': { transform: 'scale(0.5) rotate(-10deg)', opacity: '0' },
+          '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
+        },
+        badgeEarn: {
+          '0%': { transform: 'scale(0) rotate(-180deg)', opacity: '0' },
+          '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
+        },
+        ringFill: {
+          '0%': { strokeDashoffset: 'var(--ring-circumference)' },
+          '100%': { strokeDashoffset: 'var(--ring-offset)' },
+        },
+        cardEnter: {
+          '0%': { opacity: '0', transform: 'translateY(8px) scale(0.98)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        bounceIn: {
+          '0%': { transform: 'scale(0.3)', opacity: '0' },
+          '50%': { transform: 'scale(1.05)' },
+          '70%': { transform: 'scale(0.95)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        flameFlicker: {
+          '0%': { transform: 'scaleY(1) scaleX(1)' },
+          '50%': { transform: 'scaleY(1.1) scaleX(0.95)' },
+          '100%': { transform: 'scaleY(0.95) scaleX(1.05)' },
         },
       },
     },
