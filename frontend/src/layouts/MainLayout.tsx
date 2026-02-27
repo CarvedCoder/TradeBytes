@@ -17,7 +17,6 @@ import {
   Bot,
   LogOut,
   Flame,
-  Star,
 } from 'lucide-react';
 
 const navItems = [
@@ -34,7 +33,6 @@ const navItems = [
 export default function MainLayout() {
   const { user, logout } = useAuthStore();
   const { level, currentStreak, totalXp, xpToNextLevel } = useGamificationStore();
-  const location = useLocation();
 
   return (
     <div className="flex h-screen overflow-hidden">
