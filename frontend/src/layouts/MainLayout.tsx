@@ -2,7 +2,7 @@
  * Main Layout - Sidebar navigation + content area.
  */
 
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useGamificationStore } from '@/stores/gamificationStore';
 import { cn } from '@/lib/utils';

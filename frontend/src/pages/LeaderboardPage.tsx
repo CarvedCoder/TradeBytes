@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { formatCurrency, formatPercent, cn } from '@/lib/utils';
+import { formatPercent, cn } from '@/lib/utils';
 import { Trophy, Medal, Crown, Star } from 'lucide-react';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'all_time';

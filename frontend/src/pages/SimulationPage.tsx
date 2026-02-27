@@ -8,22 +8,12 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useSimulationStore } from '@/stores/simulationStore';
 import { createSimulationWS, WebSocketClient } from '@/lib/websocket';
 import { formatCurrency, formatPercent, cn } from '@/lib/utils';
 import { createChart, IChartApi, ISeriesApi, CandlestickData, Time, ColorType } from 'lightweight-charts';
-import {
-  Play,
-  Pause,
-  Square,
-  FastForward,
-  TrendingUp,
-  TrendingDown,
-  Bot,
-  Activity,
-} from 'lucide-react';
+import { Play, Pause, Square, TrendingUp, TrendingDown, Bot, Activity } from 'lucide-react';
 
 export default function SimulationPage() {
   const store = useSimulationStore();
