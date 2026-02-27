@@ -33,6 +33,19 @@
     @apply card transition-all duration-200 hover:border-primary-500/50 hover:shadow-primary-500/10;
   }
 
+  .card-gamified {
+    @apply card relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-500/40 hover:shadow-xl hover:shadow-primary-500/5;
+  }
+
+  .card-gamified::before {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent opacity-0 transition-opacity duration-300;
+  }
+
+  .card-gamified:hover::before {
+    @apply opacity-100;
+  }
+
   .btn-primary {
     @apply rounded-lg bg-primary-600 px-4 py-2 font-medium text-white transition-all hover:bg-primary-500 active:scale-95;
   }
@@ -47,6 +60,14 @@
 
   .btn-danger {
     @apply rounded-lg bg-danger/20 px-4 py-2 font-medium text-danger transition-all hover:bg-danger/30;
+  }
+
+  .btn-gamified {
+    @apply relative overflow-hidden rounded-lg bg-gradient-to-r from-primary-600 to-primary-500 px-5 py-2.5 font-semibold text-white shadow-lg shadow-primary-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-primary-500/30 active:scale-95;
+  }
+
+  .btn-streak {
+    @apply relative overflow-hidden rounded-lg bg-gradient-to-r from-streak to-warning px-5 py-2.5 font-semibold text-surface-950 shadow-lg shadow-streak/25 transition-all duration-200 hover:shadow-xl hover:shadow-streak/30 active:scale-95;
   }
 
   .input-field {
@@ -71,5 +92,48 @@
 
   .badge-primary {
     @apply badge bg-primary-500/20 text-primary-300;
+  }
+
+  .badge-xp {
+    @apply badge bg-xp/15 text-xp font-bold;
+  }
+
+  .badge-streak {
+    @apply badge bg-streak/15 text-streak font-bold;
+  }
+
+  .badge-legendary {
+    @apply badge bg-legendary/15 text-legendary font-bold;
+  }
+
+  .xp-bar-bg {
+    @apply h-3 overflow-hidden rounded-full bg-surface-800;
+  }
+
+  .xp-bar-fill {
+    @apply h-full rounded-full bg-gradient-to-r from-xp/80 to-xp transition-all duration-700 ease-out;
+  }
+
+  .progress-ring-track {
+    fill: none;
+    stroke: theme('colors.surface.800');
+    stroke-width: 4;
+  }
+
+  .progress-ring-fill {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-out;
+  }
+
+  .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
   }
 }
