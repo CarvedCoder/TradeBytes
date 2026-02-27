@@ -7,7 +7,6 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Zap, ArrowRight, CheckCircle2, Clock, Star } from 'lucide-react';
-import ProgressRing from './ProgressRing';
 
 interface DailyChallengeData {
   title?: string;
