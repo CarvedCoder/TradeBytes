@@ -9,8 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { formatPercent, cn } from '@/lib/utils';
-import { Trophy, Medal, Crown, Star, Flame, Shield, TrendingUp } from 'lucide-react';
-import { LevelBadge, XPBar } from '@/components/gamification';
+import { Trophy, Medal, Crown, Star, Flame } from 'lucide-react';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'all_time';
 
@@ -31,13 +30,6 @@ export default function LeaderboardPage() {
   const entries = leaderboard?.entries ?? [];
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
-
-  const getRankDecor = (rank: number) => {
-    if (rank === 1) return { icon: <Crown className="h-6 w-6 text-yellow-400" />, ring: 'ring-2 ring-yellow-400/50 shadow-lg shadow-yellow-400/20', bg: 'bg-yellow-400/10', text: 'text-yellow-400' };
-    if (rank === 2) return { icon: <Medal className="h-5 w-5 text-gray-300" />, ring: 'ring-2 ring-gray-300/40', bg: 'bg-gray-300/10', text: 'text-gray-300' };
-    if (rank === 3) return { icon: <Medal className="h-5 w-5 text-amber-600" />, ring: 'ring-2 ring-amber-600/40', bg: 'bg-amber-600/10', text: 'text-amber-600' };
-    return { icon: null, ring: '', bg: '', text: 'text-surface-400' };
-  };
 
   return (
     <div className="space-y-6">
