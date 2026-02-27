@@ -21,9 +21,7 @@ import {
   LineChart,
   Swords,
   BookOpen,
-  Target,
   Briefcase,
-  Sparkles,
 } from 'lucide-react';
 import { XPBar, StreakCounter, LevelBadge, DailyCard, UnlockCard, LeaderboardPreview } from '@/components/gamification';
 
@@ -47,7 +45,7 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
   // ---- Existing API queries (unchanged) ----
-  const { data: gamState, isLoading: gamLoading } = useQuery({
+  const { data: gamState } = useQuery({
     queryKey: ['gamification-state'],
     queryFn: () => api.get('/gamification/state').then((r) => r.data),
   });

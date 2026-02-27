@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Bot, Send, Loader2, ArrowRight, Lightbulb } from 'lucide-react';
+import { Bot, Send, Loader2, Lightbulb } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
